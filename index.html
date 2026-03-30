@@ -1,0 +1,1617 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Shot</title>
+  <style>
+    :root {
+      --bg-a: #0f1722;
+      --bg-b: #1d2a39;
+      --panel: rgba(10, 16, 24, 0.78);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --text: #f2f6fc;
+      --muted: #9db0c7;
+      --accent: #49d7b4;
+      --danger: #ff6b6b;
+      --good: #63e08d;
+      --warning: #ffd66a;
+      --board-shadow: 0 20px 42px rgba(0, 0, 0, 0.42);
+      --ui-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      --font-main: "Trebuchet MS", "Candara", "Segoe UI", sans-serif;
+      --font-head: "Verdana", "Franklin Gothic Medium", sans-serif;
+      --board-size: min(84vw, 470px);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(73, 215, 180, 0.12), transparent 40%),
+        radial-gradient(circle at 85% 90%, rgba(77, 171, 247, 0.12), transparent 45%),
+        linear-gradient(145deg, var(--bg-a), var(--bg-b));
+      color: var(--text);
+      font-family: var(--font-main);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 20px 12px 28px;
+    }
+
+    .app {
+      width: min(760px, 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.7rem, 3.6vw, 2.4rem);
+      font-family: var(--font-head);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .top {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mode-switch {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 620px;
+    }
+
+    .mode-btn,
+    .ghost,
+    .overlay-actions button {
+      border: 0;
+      border-radius: 12px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 10px 12px;
+      font-weight: 700;
+      font-family: var(--font-main);
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: transform 120ms ease, filter 120ms ease, background 120ms ease;
+      box-shadow: var(--ui-shadow);
+    }
+
+    .mode-btn:hover,
+    .ghost:hover,
+    .overlay-actions button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.08);
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, rgba(73, 215, 180, 0.75), rgba(48, 165, 141, 0.85));
+      color: #082419;
+      text-shadow: none;
+    }
+
+    .hud {
+      width: 100%;
+      max-width: 620px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 8px 10px;
+      text-align: center;
+      box-shadow: var(--ui-shadow);
+      min-height: 62px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      backdrop-filter: blur(6px);
+    }
+
+    .stat span {
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .stat strong {
+      font-size: 1.15rem;
+      line-height: 1;
+      letter-spacing: 0.02em;
+    }
+
+    .stat.time {
+      display: none;
+    }
+
+    .puzzle-info {
+      width: 100%;
+      max-width: 620px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: rgba(9, 15, 22, 0.7);
+      box-shadow: var(--ui-shadow);
+      padding: 10px 14px;
+      display: grid;
+      gap: 4px;
+      text-align: center;
+    }
+
+    .puzzle-info.hidden {
+      display: none;
+    }
+
+    #puzzleLabel {
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #bcd2ea;
+      text-transform: uppercase;
+      font-size: 0.88rem;
+    }
+
+    #objectiveText {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #eef6ff;
+    }
+
+    #progressText {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    #boardFrame {
+      position: relative;
+      width: var(--board-size);
+      aspect-ratio: 1 / 1;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: var(--board-shadow);
+      touch-action: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: linear-gradient(160deg, rgba(17, 26, 35, 0.96), rgba(9, 14, 22, 0.98));
+    }
+
+    #gridBackdrop,
+    #columnHighlight,
+    #board,
+    #fxLayer,
+    #comboBanner,
+    #gameOverlay {
+      position: absolute;
+      inset: 0;
+    }
+
+    #gridBackdrop {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 34%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+      background-size: 100% 100%, 20% 20%, 20% 20%;
+      opacity: 0.86;
+    }
+
+    #columnHighlight {
+      width: 20%;
+      inset: 0 auto 0 0;
+      opacity: 0;
+      border-radius: 0;
+      background: linear-gradient(180deg, rgba(123, 255, 220, 0.21), rgba(73, 215, 180, 0.08));
+      box-shadow: inset 0 0 0 2px rgba(123, 255, 220, 0.32);
+      transition: transform 120ms ease, opacity 120ms ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    #board,
+    #fxLayer {
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .block {
+      position: absolute;
+      border-radius: 17px;
+      box-shadow:
+        inset 0 2px 4px rgba(255, 255, 255, 0.38),
+        inset 0 -3px 7px rgba(0, 0, 0, 0.2),
+        0 8px 14px rgba(0, 0, 0, 0.28);
+      will-change: transform, opacity;
+      transform: translate(0, 0);
+      transition: transform 180ms cubic-bezier(0.22, 0.89, 0.33, 1), opacity 180ms linear;
+      overflow: hidden;
+    }
+
+    .block::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.32), transparent 45%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    .color-0 {
+      background: linear-gradient(150deg, #ff9e9e, #ff5f5f);
+    }
+
+    .color-1 {
+      background: linear-gradient(150deg, #ffc07f, #ff9642);
+    }
+
+    .color-2 {
+      background: linear-gradient(150deg, #ffe88e, #ffd14b);
+    }
+
+    .color-3 {
+      background: linear-gradient(150deg, #98f4d8, #4dd4ac);
+    }
+
+    .color-4 {
+      background: linear-gradient(150deg, #96d2ff, #4dabf7);
+    }
+
+    .color-5 {
+      background: linear-gradient(150deg, #ffadd4, #ff79b7);
+    }
+
+    .block.clearing {
+      animation: clearPulse 260ms ease-in-out;
+      filter: saturate(1.35) brightness(1.2);
+    }
+
+    @keyframes clearPulse {
+      0% {
+        transform: scale(1);
+      }
+      45% {
+        transform: scale(1.09);
+      }
+      100% {
+        transform: scale(0.92);
+      }
+    }
+
+    .row-sweep {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 20%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: rowSweep 280ms ease-out forwards;
+      z-index: 4;
+    }
+
+    @keyframes rowSweep {
+      0% {
+        opacity: 0;
+        transform: translateX(-32%);
+      }
+      18% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateX(32%);
+      }
+    }
+
+    .float-text {
+      position: absolute;
+      transform: translate(-50%, 0);
+      font-weight: 800;
+      font-size: clamp(0.75rem, 2.4vw, 1rem);
+      text-shadow: 0 3px 10px rgba(0, 0, 0, 0.55);
+      pointer-events: none;
+      z-index: 6;
+      animation: floatRise 860ms ease-out forwards;
+      white-space: nowrap;
+    }
+
+    .float-text.good {
+      color: var(--good);
+    }
+
+    .float-text.bad {
+      color: #ff8b8b;
+    }
+
+    .float-text.score {
+      color: #ffe074;
+    }
+
+    .float-text.time {
+      color: #9ae6ff;
+    }
+
+    @keyframes floatRise {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 8px) scale(0.94);
+      }
+      15% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -34px) scale(1.02);
+      }
+    }
+
+    #comboBanner {
+      z-index: 7;
+      pointer-events: none;
+      inset: 10px auto auto 50%;
+      width: fit-content;
+      transform: translate(-50%, -18px) scale(0.9);
+      opacity: 0;
+      padding: 8px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(3, 9, 14, 0.76);
+      backdrop-filter: blur(6px);
+      text-align: center;
+      line-height: 1.2;
+      box-shadow: var(--ui-shadow);
+      transition: opacity 140ms ease, transform 180ms ease;
+    }
+
+    #comboBanner span {
+      display: block;
+      color: #95f0cb;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    #comboBanner strong {
+      display: block;
+      color: #f8ffdf;
+      font-size: 0.82rem;
+      margin-top: 2px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #comboBanner.show {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+
+    #gameOverlay {
+      z-index: 9;
+      display: grid;
+      place-items: center;
+      background: rgba(5, 10, 15, 0.68);
+      backdrop-filter: blur(4px);
+      opacity: 1;
+      transition: opacity 180ms ease;
+    }
+
+    #gameOverlay.hidden {
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .overlay-card {
+      width: min(84%, 360px);
+      background: linear-gradient(170deg, rgba(20, 29, 38, 0.96), rgba(9, 14, 20, 0.96));
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 18px;
+      padding: 18px 16px 16px;
+      text-align: center;
+      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.45);
+      display: grid;
+      gap: 10px;
+    }
+
+    .overlay-card h2 {
+      margin: 0;
+      font-family: var(--font-head);
+      letter-spacing: 0.04em;
+      font-size: 1.4rem;
+    }
+
+    .overlay-card p {
+      margin: 0;
+      color: #d4e0ee;
+      font-size: 0.98rem;
+      line-height: 1.4;
+    }
+
+    .overlay-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .overlay-actions button.hidden {
+      display: none;
+    }
+
+    .overlay-actions button.primary {
+      background: linear-gradient(145deg, rgba(73, 215, 180, 0.85), rgba(51, 170, 145, 0.92));
+      color: #052a1f;
+    }
+
+    .overlay-actions button.secondary {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .hint {
+      margin: 0;
+      color: #b5c8de;
+      text-align: center;
+      font-size: 0.95rem;
+      width: min(620px, 100%);
+      line-height: 1.45;
+    }
+
+    .controls-row {
+      width: min(620px, 100%);
+      display: flex;
+      justify-content: center;
+    }
+
+    .ghost {
+      min-width: 120px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    @media (max-width: 640px) {
+      .hud {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stat {
+        min-height: 58px;
+      }
+
+      #comboBanner {
+        padding: 7px 12px;
+      }
+
+      .overlay-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .mode-btn,
+      .ghost,
+      .overlay-actions button {
+        padding: 10px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <h1>Block Shot</h1>
+      <div id="modeSwitcher" class="mode-switch">
+        <button class="mode-btn active" data-mode="classic">Classic</button>
+        <button class="mode-btn" data-mode="puzzle">Puzzle</button>
+        <button class="mode-btn" data-mode="time">Time Attack</button>
+      </div>
+    </header>
+
+    <section class="hud">
+      <div class="stat"><span>Score</span><strong id="scoreValue">0</strong></div>
+      <div class="stat"><span>Bullets</span><strong id="bulletsValue">0</strong></div>
+      <div class="stat"><span>Combo</span><strong id="comboValue">x0</strong></div>
+      <div class="stat"><span>Best Combo</span><strong id="bestComboValue">x0</strong></div>
+      <div class="stat time" id="timerCard"><span>Time</span><strong id="timerValue">1:00</strong></div>
+    </section>
+
+    <section id="puzzleInfo" class="puzzle-info hidden">
+      <div id="puzzleLabel">Puzzle 1</div>
+      <div id="objectiveText">Clear rows</div>
+      <div id="progressText">Progress</div>
+    </section>
+
+    <section id="boardFrame" aria-label="5 by 5 board" role="application">
+      <div id="gridBackdrop"></div>
+      <div id="columnHighlight"></div>
+      <div id="board"></div>
+      <div id="fxLayer"></div>
+      <div id="comboBanner" aria-live="polite"></div>
+      <div id="gameOverlay" class="hidden" aria-live="polite">
+        <div class="overlay-card">
+          <h2 id="overlayTitle">Game Over</h2>
+          <p id="overlayText">Final score: 0</p>
+          <div class="overlay-actions">
+            <button id="overlayPrimary" class="primary">Restart</button>
+            <button id="overlaySecondary" class="secondary hidden">Next Puzzle</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p id="instructionText" class="hint">
+      Click or tap a column to shoot its bottom block. Keyboard: 1-5 to shoot, arrows to select, Space/Enter to fire.
+    </p>
+
+    <div class="controls-row">
+      <button id="restartBtn" class="ghost">Restart</button>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // Core gameplay tuning and board dimensions.
+      const CONFIG = Object.freeze({
+        ROWS: 5,
+        COLS: 5,
+        COLOR_COUNT: 6,
+        INITIAL_BULLETS: 8,
+        TIME_ATTACK_SECONDS: 60,
+        TIME_ATTACK_BULLETS: 20,
+        TIME_BONUS_PER_ROW: 2,
+        BULLET_REWARD_UNIT: 5,
+        SCORE_PER_ROW: 100,
+        BOARD_REROLL_LIMIT: 40,
+        ANIM: Object.freeze({
+          MOVE_MS: 180,
+          CLEAR_MS: 260,
+          SHOT_MS: 170,
+          FADE_MS: 140,
+        }),
+      });
+
+      const MODES = Object.freeze({
+        CLASSIC: "classic",
+        PUZZLE: "puzzle",
+        TIME: "time",
+      });
+
+      const PUZZLE_LEVELS = [
+        {
+          name: "Puzzle 1",
+          bullets: 5,
+          objective: {
+            type: "rows",
+            target: 2,
+            label: "Clear 2 rows in 5 bullets",
+          },
+          board: [
+            [0, 2, 3, 4, 5],
+            [1, 1, 1, 1, 3],
+            [2, 2, 2, 4, 2],
+            [3, 4, 5, 0, 1],
+            [4, 0, 5, 3, 2],
+          ],
+        },
+        {
+          name: "Puzzle 2",
+          bullets: 6,
+          objective: {
+            type: "rows",
+            target: 3,
+            label: "Clear 3 rows in 6 bullets",
+          },
+          board: [
+            [0, 5, 0, 2, 0],
+            [1, 1, 3, 1, 1],
+            [2, 4, 2, 2, 2],
+            [3, 3, 5, 3, 3],
+            [4, 0, 4, 1, 4],
+          ],
+        },
+        {
+          name: "Puzzle 3",
+          bullets: 7,
+          objective: {
+            type: "score",
+            target: 300,
+            label: "Reach 300 score in 7 bullets",
+          },
+          board: [
+            [0, 1, 0, 0, 0],
+            [2, 2, 2, 5, 2],
+            [4, 3, 4, 4, 4],
+            [1, 1, 5, 1, 1],
+            [3, 3, 3, 0, 3],
+          ],
+        },
+      ];
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+      const cloneMatrix = (matrix) => matrix.map((row) => row.slice());
+
+      const randomColor = () => Math.floor(Math.random() * CONFIG.COLOR_COUNT);
+
+      // Board generation helpers for classic/time starts.
+      function buildRandomMatrix() {
+        return Array.from({ length: CONFIG.ROWS }, () =>
+          Array.from({ length: CONFIG.COLS }, randomColor)
+        );
+      }
+
+      function simulateShotMatrix(matrix, column, topColor) {
+        const sim = cloneMatrix(matrix);
+        for (let row = CONFIG.ROWS - 1; row > 0; row -= 1) {
+          sim[row][column] = sim[row - 1][column];
+        }
+        sim[0][column] = topColor;
+        return sim;
+      }
+
+      function findUniformRowsInMatrix(matrix) {
+        const rows = [];
+        for (let row = 0; row < CONFIG.ROWS; row += 1) {
+          const first = matrix[row][0];
+          let allSame = true;
+          for (let col = 1; col < CONFIG.COLS; col += 1) {
+            if (matrix[row][col] !== first) {
+              allSame = false;
+              break;
+            }
+          }
+          if (allSame) {
+            rows.push(row);
+          }
+        }
+        return rows;
+      }
+
+      function hasNearMatchRow(matrix) {
+        for (let row = 0; row < CONFIG.ROWS; row += 1) {
+          const counts = new Array(CONFIG.COLOR_COUNT).fill(0);
+          for (let col = 0; col < CONFIG.COLS; col += 1) {
+            counts[matrix[row][col]] += 1;
+          }
+          if (Math.max(...counts) >= 4) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function matrixLooksPlayable(matrix) {
+        for (let col = 0; col < CONFIG.COLS; col += 1) {
+          for (let color = 0; color < CONFIG.COLOR_COUNT; color += 1) {
+            const sim = simulateShotMatrix(matrix, col, color);
+            if (findUniformRowsInMatrix(sim).length > 0 || hasNearMatchRow(sim)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      function generatePlayableMatrix() {
+        let fallback = buildRandomMatrix();
+        for (let i = 0; i < CONFIG.BOARD_REROLL_LIMIT; i += 1) {
+          const candidate = buildRandomMatrix();
+          if (findUniformRowsInMatrix(candidate).length > 0) {
+            continue;
+          }
+          if (matrixLooksPlayable(candidate)) {
+            return candidate;
+          }
+          fallback = candidate;
+        }
+        return fallback;
+      }
+
+      // DOM renderer/animator that maps block ids to positioned elements.
+      class GameRenderer {
+        constructor({ boardEl, fxEl, highlightEl, comboEl }) {
+          this.boardEl = boardEl;
+          this.fxEl = fxEl;
+          this.highlightEl = highlightEl;
+          this.comboEl = comboEl;
+          this.blockEls = new Map();
+          this.cellSize = 0;
+          this.gap = 6;
+          this.comboHideTimer = null;
+          this.measure();
+        }
+
+        measure() {
+          const rect = this.boardEl.getBoundingClientRect();
+          this.cellSize = rect.width / CONFIG.COLS;
+          this.gap = Math.max(4, this.cellSize * 0.09);
+        }
+
+        cellPosition(row, col) {
+          return {
+            x: col * this.cellSize + this.gap,
+            y: row * this.cellSize + this.gap,
+          };
+        }
+
+        cellCenter(row, col) {
+          const size = this.cellSize - this.gap * 2;
+          const pos = this.cellPosition(row, col);
+          return {
+            x: pos.x + size / 2,
+            y: pos.y + size / 2,
+          };
+        }
+
+        createBlockEl(block) {
+          const el = document.createElement("div");
+          el.className = `block color-${block.color}`;
+          el.dataset.id = String(block.id);
+          this.boardEl.appendChild(el);
+          return el;
+        }
+
+        removeAll() {
+          this.blockEls.forEach((el) => el.remove());
+          this.blockEls.clear();
+          this.fxEl.innerHTML = "";
+          this.comboEl.classList.remove("show");
+        }
+
+        setHighlight(column, active = true) {
+          this.measure();
+          if (column == null || Number.isNaN(column)) {
+            this.highlightEl.style.opacity = "0";
+            return;
+          }
+          this.highlightEl.style.width = `${this.cellSize}px`;
+          this.highlightEl.style.transform = `translateX(${column * this.cellSize}px)`;
+          this.highlightEl.style.opacity = active ? "1" : "0.45";
+        }
+
+        fadeAndRemove(el, isShot = false, row = 0, col = 0) {
+          if (isShot) {
+            const start = this.cellPosition(row, col);
+            el.style.transition = "none";
+            el.style.transform = `translate(${start.x}px, ${start.y}px) scale(1)`;
+            el.style.opacity = "1";
+            requestAnimationFrame(() => {
+              el.style.transition = `transform ${CONFIG.ANIM.SHOT_MS}ms cubic-bezier(0.17, 0.84, 0.33, 1), opacity ${CONFIG.ANIM.SHOT_MS}ms ease`;
+              el.style.transform = `translate(${start.x}px, ${start.y + this.cellSize * 0.72}px) scale(0.55) rotate(8deg)`;
+              el.style.opacity = "0";
+            });
+            setTimeout(() => el.remove(), CONFIG.ANIM.SHOT_MS + 24);
+            return;
+          }
+
+          const current = el.style.transform;
+          el.style.transition = `transform ${CONFIG.ANIM.FADE_MS}ms ease, opacity ${CONFIG.ANIM.FADE_MS}ms ease`;
+          el.style.transform = `${current} scale(0.75)`;
+          el.style.opacity = "0";
+          setTimeout(() => el.remove(), CONFIG.ANIM.FADE_MS + 24);
+        }
+
+        async draw(board, options = {}) {
+          this.measure();
+          const instant = options.instant === true;
+          const shotRemoved = Array.isArray(options.shotRemoved) ? options.shotRemoved : [];
+          const shotMap = new Map(shotRemoved.map((item) => [item.id, item]));
+
+          const nextPositions = new Map();
+          for (let row = 0; row < CONFIG.ROWS; row += 1) {
+            for (let col = 0; col < CONFIG.COLS; col += 1) {
+              const block = board[row][col];
+              if (block) {
+                nextPositions.set(block.id, { block, row, col });
+              }
+            }
+          }
+
+          for (const [id, el] of Array.from(this.blockEls.entries())) {
+            if (!nextPositions.has(id)) {
+              this.blockEls.delete(id);
+              if (shotMap.has(id)) {
+                const info = shotMap.get(id);
+                this.fadeAndRemove(el, true, info.row, info.col);
+              } else {
+                this.fadeAndRemove(el);
+              }
+            }
+          }
+
+          for (const [, pos] of nextPositions) {
+            let el = this.blockEls.get(pos.block.id);
+            const finalPos = this.cellPosition(pos.row, pos.col);
+            const size = this.cellSize - this.gap * 2;
+
+            if (!el) {
+              el = this.createBlockEl(pos.block);
+              this.blockEls.set(pos.block.id, el);
+              const startRow =
+                !instant && Number.isFinite(pos.block.spawnRow)
+                  ? pos.block.spawnRow
+                  : pos.row;
+              const startPos = this.cellPosition(startRow, pos.col);
+
+              el.style.width = `${size}px`;
+              el.style.height = `${size}px`;
+              el.style.borderRadius = `${Math.max(10, size * 0.22)}px`;
+
+              if (instant) {
+                el.style.transition = "none";
+                el.style.transform = `translate(${finalPos.x}px, ${finalPos.y}px)`;
+                el.style.opacity = "1";
+              } else {
+                el.style.transition = "none";
+                el.style.transform = `translate(${startPos.x}px, ${startPos.y}px)`;
+                el.style.opacity = "0";
+                requestAnimationFrame(() => {
+                  el.style.transition = `transform ${CONFIG.ANIM.MOVE_MS}ms cubic-bezier(0.2, 0.9, 0.34, 1), opacity ${CONFIG.ANIM.MOVE_MS}ms ease`;
+                  el.style.transform = `translate(${finalPos.x}px, ${finalPos.y}px)`;
+                  el.style.opacity = "1";
+                });
+              }
+            } else {
+              el.style.width = `${size}px`;
+              el.style.height = `${size}px`;
+              el.style.borderRadius = `${Math.max(10, size * 0.22)}px`;
+
+              if (instant) {
+                el.style.transition = "none";
+                el.style.transform = `translate(${finalPos.x}px, ${finalPos.y}px)`;
+                el.style.opacity = "1";
+              } else {
+                el.style.transition = `transform ${CONFIG.ANIM.MOVE_MS}ms cubic-bezier(0.2, 0.9, 0.34, 1), opacity 120ms linear`;
+                el.style.transform = `translate(${finalPos.x}px, ${finalPos.y}px)`;
+                el.style.opacity = "1";
+              }
+            }
+
+            pos.block.spawnRow = null;
+          }
+
+          if (!instant) {
+            await wait(CONFIG.ANIM.MOVE_MS + 25);
+          }
+        }
+
+        async animateRowClear(board, rows) {
+          this.measure();
+          const targets = [];
+          for (const row of rows) {
+            for (let col = 0; col < CONFIG.COLS; col += 1) {
+              const block = board[row][col];
+              if (!block) {
+                continue;
+              }
+              const el = this.blockEls.get(block.id);
+              if (el) {
+                el.classList.add("clearing");
+                targets.push(el);
+              }
+            }
+
+            const sweep = document.createElement("div");
+            sweep.className = "row-sweep";
+            sweep.style.top = `${row * this.cellSize}px`;
+            this.fxEl.appendChild(sweep);
+            setTimeout(() => sweep.remove(), CONFIG.ANIM.CLEAR_MS + 60);
+          }
+
+          await wait(CONFIG.ANIM.CLEAR_MS);
+
+          for (const el of targets) {
+            el.classList.remove("clearing");
+          }
+        }
+
+        showFloating(text, col, row, type = "good") {
+          this.measure();
+          const fx = document.createElement("div");
+          fx.className = `float-text ${type}`;
+          fx.textContent = text;
+          const center = this.cellCenter(row, col);
+          fx.style.left = `${center.x}px`;
+          fx.style.top = `${center.y}px`;
+          this.fxEl.appendChild(fx);
+          setTimeout(() => fx.remove(), 900);
+        }
+
+        showCombo(comboIndex, bulletsGain) {
+          this.comboEl.innerHTML = `<span>Combo x${comboIndex}</span><strong>+${bulletsGain} Bullets</strong>`;
+          this.comboEl.classList.remove("show");
+          void this.comboEl.offsetWidth;
+          this.comboEl.classList.add("show");
+
+          if (this.comboHideTimer) {
+            clearTimeout(this.comboHideTimer);
+          }
+          this.comboHideTimer = setTimeout(() => {
+            this.comboEl.classList.remove("show");
+          }, 920);
+        }
+      }
+
+      // Main game controller: state, input, mode flow, scoring, and rules.
+      class BlockShotGame {
+        constructor() {
+          this.blockCounter = 0;
+          this.overlayActions = {
+            primary: null,
+            secondary: null,
+          };
+          this.state = {
+            mode: MODES.CLASSIC,
+            board: [],
+            score: 0,
+            bullets: 0,
+            rowsCleared: 0,
+            currentCombo: 0,
+            bestCombo: 0,
+            timer: 0,
+            isBusy: false,
+            isGameOver: false,
+            selectedColumn: 2,
+            hoverColumn: null,
+            puzzleIndex: 0,
+          };
+
+          this.dom = this.captureDom();
+          this.renderer = new GameRenderer({
+            boardEl: this.dom.board,
+            fxEl: this.dom.fxLayer,
+            highlightEl: this.dom.columnHighlight,
+            comboEl: this.dom.comboBanner,
+          });
+
+          this.lastFrameTime = performance.now();
+          this.sessionId = 0;
+          this.bindEvents();
+          this.startTimerLoop();
+          this.setMode(MODES.CLASSIC, true);
+        }
+
+        captureDom() {
+          return {
+            boardFrame: document.getElementById("boardFrame"),
+            board: document.getElementById("board"),
+            fxLayer: document.getElementById("fxLayer"),
+            columnHighlight: document.getElementById("columnHighlight"),
+            comboBanner: document.getElementById("comboBanner"),
+            modeButtons: Array.from(document.querySelectorAll(".mode-btn")),
+            scoreValue: document.getElementById("scoreValue"),
+            bulletsValue: document.getElementById("bulletsValue"),
+            comboValue: document.getElementById("comboValue"),
+            bestComboValue: document.getElementById("bestComboValue"),
+            timerCard: document.getElementById("timerCard"),
+            timerValue: document.getElementById("timerValue"),
+            puzzleInfo: document.getElementById("puzzleInfo"),
+            puzzleLabel: document.getElementById("puzzleLabel"),
+            objectiveText: document.getElementById("objectiveText"),
+            progressText: document.getElementById("progressText"),
+            instructionText: document.getElementById("instructionText"),
+            restartBtn: document.getElementById("restartBtn"),
+            gameOverlay: document.getElementById("gameOverlay"),
+            overlayTitle: document.getElementById("overlayTitle"),
+            overlayText: document.getElementById("overlayText"),
+            overlayPrimary: document.getElementById("overlayPrimary"),
+            overlaySecondary: document.getElementById("overlaySecondary"),
+          };
+        }
+
+        bindEvents() {
+          this.dom.modeButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const mode = button.dataset.mode;
+              this.setMode(mode, false);
+            });
+          });
+
+          this.dom.restartBtn.addEventListener("click", () => {
+            this.restart();
+          });
+
+          this.dom.overlayPrimary.addEventListener("click", () => {
+            if (typeof this.overlayActions.primary === "function") {
+              this.overlayActions.primary();
+            }
+          });
+
+          this.dom.overlaySecondary.addEventListener("click", () => {
+            if (typeof this.overlayActions.secondary === "function") {
+              this.overlayActions.secondary();
+            }
+          });
+
+          this.dom.boardFrame.addEventListener("mousemove", (event) => {
+            const col = this.columnFromClientX(event.clientX);
+            this.state.hoverColumn = col;
+            this.refreshHighlight();
+          });
+
+          this.dom.boardFrame.addEventListener("mouseleave", () => {
+            this.state.hoverColumn = null;
+            this.refreshHighlight();
+          });
+
+          this.dom.boardFrame.addEventListener("click", (event) => {
+            const col = this.columnFromClientX(event.clientX);
+            this.state.selectedColumn = col;
+            this.refreshHighlight();
+            this.shootColumn(col);
+          });
+
+          this.dom.boardFrame.addEventListener(
+            "touchstart",
+            (event) => {
+              const touch = event.touches[0];
+              if (!touch) {
+                return;
+              }
+              event.preventDefault();
+              const col = this.columnFromClientX(touch.clientX);
+              this.state.selectedColumn = col;
+              this.state.hoverColumn = col;
+              this.refreshHighlight();
+            },
+            { passive: false }
+          );
+
+          this.dom.boardFrame.addEventListener(
+            "touchmove",
+            (event) => {
+              const touch = event.touches[0];
+              if (!touch) {
+                return;
+              }
+              event.preventDefault();
+              const col = this.columnFromClientX(touch.clientX);
+              this.state.selectedColumn = col;
+              this.state.hoverColumn = col;
+              this.refreshHighlight();
+            },
+            { passive: false }
+          );
+
+          this.dom.boardFrame.addEventListener(
+            "touchend",
+            (event) => {
+              event.preventDefault();
+              const col = this.state.selectedColumn;
+              this.state.hoverColumn = null;
+              this.refreshHighlight();
+              this.shootColumn(col);
+            },
+            { passive: false }
+          );
+
+          window.addEventListener("keydown", (event) => {
+            const target = event.target;
+            if (
+              target instanceof HTMLElement &&
+              (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+            ) {
+              return;
+            }
+
+            if (event.key >= "1" && event.key <= "5") {
+              const col = Number(event.key) - 1;
+              this.state.selectedColumn = col;
+              this.refreshHighlight();
+              this.shootColumn(col);
+              event.preventDefault();
+              return;
+            }
+
+            if (event.key === "ArrowLeft") {
+              this.state.selectedColumn = clamp(this.state.selectedColumn - 1, 0, CONFIG.COLS - 1);
+              this.refreshHighlight();
+              event.preventDefault();
+              return;
+            }
+
+            if (event.key === "ArrowRight") {
+              this.state.selectedColumn = clamp(this.state.selectedColumn + 1, 0, CONFIG.COLS - 1);
+              this.refreshHighlight();
+              event.preventDefault();
+              return;
+            }
+
+            if (event.key === " " || event.key === "Enter") {
+              this.shootColumn(this.state.selectedColumn);
+              event.preventDefault();
+            }
+          });
+
+          window.addEventListener("resize", () => {
+            if (!this.state.board.length) {
+              return;
+            }
+            this.renderer.draw(this.state.board, { instant: true });
+            this.refreshHighlight();
+          });
+        }
+
+        startTimerLoop() {
+          const tick = (time) => {
+            const dt = Math.max(0, (time - this.lastFrameTime) / 1000);
+            this.lastFrameTime = time;
+
+            if (this.state.mode === MODES.TIME && !this.state.isGameOver) {
+              this.state.timer = Math.max(0, this.state.timer - dt);
+              if (this.state.timer <= 0) {
+                this.state.timer = 0;
+                this.updateHud();
+                this.showOverlay({
+                  title: "Time Up",
+                  text: `Final score: ${this.state.score}`,
+                  primaryLabel: "Restart",
+                  primaryAction: () => this.restart(),
+                });
+              } else {
+                this.updateHud();
+              }
+            }
+
+            requestAnimationFrame(tick);
+          };
+
+          requestAnimationFrame(tick);
+        }
+
+        createBlock(color = randomColor(), spawnRow = null) {
+          return {
+            id: ++this.blockCounter,
+            color,
+            spawnRow,
+          };
+        }
+
+        boardFromMatrix(matrix) {
+          return matrix.map((row) => row.map((color) => this.createBlock(color)));
+        }
+
+        createPlayableBoard() {
+          const matrix = generatePlayableMatrix();
+          return this.boardFromMatrix(matrix);
+        }
+
+        columnFromClientX(clientX) {
+          const rect = this.dom.boardFrame.getBoundingClientRect();
+          const relative = clamp(clientX - rect.left, 0, rect.width - 1);
+          const col = Math.floor(relative / (rect.width / CONFIG.COLS));
+          return clamp(col, 0, CONFIG.COLS - 1);
+        }
+
+        setMode(mode, initial = false) {
+          if (!Object.values(MODES).includes(mode)) {
+            return;
+          }
+
+          const modeChanged = this.state.mode !== mode;
+          if (modeChanged && mode === MODES.PUZZLE) {
+            this.state.puzzleIndex = 0;
+          }
+
+          this.state.mode = mode;
+          this.dom.modeButtons.forEach((button) => {
+            button.classList.toggle("active", button.dataset.mode === mode);
+          });
+
+          this.resetGame({ keepPuzzleIndex: !modeChanged || initial });
+        }
+
+        resetGame(options = {}) {
+          this.sessionId += 1;
+          const keepPuzzleIndex = options.keepPuzzleIndex !== false;
+          const retainedPuzzleIndex = keepPuzzleIndex ? this.state.puzzleIndex : 0;
+
+          this.state.score = 0;
+          this.state.rowsCleared = 0;
+          this.state.currentCombo = 0;
+          this.state.bestCombo = 0;
+          this.state.timer = 0;
+          this.state.isBusy = false;
+          this.state.isGameOver = false;
+          this.state.hoverColumn = null;
+          this.state.selectedColumn = 2;
+          this.state.puzzleIndex = clamp(retainedPuzzleIndex, 0, PUZZLE_LEVELS.length - 1);
+
+          if (this.state.mode === MODES.CLASSIC) {
+            this.state.bullets = CONFIG.INITIAL_BULLETS;
+            this.state.board = this.createPlayableBoard();
+          } else if (this.state.mode === MODES.TIME) {
+            this.state.bullets = CONFIG.TIME_ATTACK_BULLETS;
+            this.state.timer = CONFIG.TIME_ATTACK_SECONDS;
+            this.state.board = this.createPlayableBoard();
+          } else {
+            const level = PUZZLE_LEVELS[this.state.puzzleIndex];
+            this.state.bullets = level.bullets;
+            this.state.board = this.boardFromMatrix(level.board);
+          }
+
+          this.hideOverlay();
+          this.renderer.removeAll();
+          this.renderer.draw(this.state.board, { instant: true });
+          this.refreshHighlight();
+          this.updateHud();
+        }
+
+        restart() {
+          if (this.state.mode === MODES.PUZZLE) {
+            this.resetGame({ keepPuzzleIndex: true });
+            return;
+          }
+          this.resetGame({ keepPuzzleIndex: false });
+        }
+
+        canShoot() {
+          if (this.state.isBusy || this.state.isGameOver) {
+            return false;
+          }
+          if (this.state.bullets <= 0) {
+            return false;
+          }
+          if (this.state.mode === MODES.TIME && this.state.timer <= 0) {
+            return false;
+          }
+          return true;
+        }
+
+        // Executes one player shot and full post-shot resolution.
+        async shootColumn(column) {
+          if (!this.canShoot()) {
+            return;
+          }
+          const shotSession = this.sessionId;
+
+          this.state.isBusy = true;
+          this.state.selectedColumn = column;
+          this.state.bullets -= 1;
+          this.state.currentCombo = 0;
+
+          const removed = this.removeBottomBlock(column);
+          this.renderer.showFloating("-1 Bullet", column, CONFIG.ROWS - 1, "bad");
+          this.updateHud();
+
+          await this.renderer.draw(this.state.board, {
+            shotRemoved: [removed],
+          });
+          if (shotSession !== this.sessionId || this.state.isGameOver) {
+            return;
+          }
+
+          await this.resolveCascadeChain(shotSession);
+          if (shotSession !== this.sessionId || this.state.isGameOver) {
+            return;
+          }
+
+          this.state.isBusy = false;
+          this.updateHud();
+          this.checkEndConditions();
+        }
+
+        removeBottomBlock(column) {
+          const removed = this.state.board[CONFIG.ROWS - 1][column];
+
+          for (let row = CONFIG.ROWS - 1; row > 0; row -= 1) {
+            this.state.board[row][column] = this.state.board[row - 1][column];
+          }
+
+          this.state.board[0][column] = this.createBlock(randomColor(), -1);
+
+          return {
+            id: removed.id,
+            row: CONFIG.ROWS - 1,
+            col: column,
+          };
+        }
+
+        findUniformRows() {
+          const rows = [];
+          for (let row = 0; row < CONFIG.ROWS; row += 1) {
+            const first = this.state.board[row][0];
+            if (!first) {
+              continue;
+            }
+            let same = true;
+            for (let col = 1; col < CONFIG.COLS; col += 1) {
+              const current = this.state.board[row][col];
+              if (!current || current.color !== first.color) {
+                same = false;
+                break;
+              }
+            }
+            if (same) {
+              rows.push(row);
+            }
+          }
+          return rows;
+        }
+
+        clearRows(rows) {
+          for (const row of rows) {
+            for (let col = 0; col < CONFIG.COLS; col += 1) {
+              this.state.board[row][col] = null;
+            }
+          }
+        }
+
+        applyGravityAndRefill() {
+          for (let col = 0; col < CONFIG.COLS; col += 1) {
+            const survivors = [];
+            for (let row = CONFIG.ROWS - 1; row >= 0; row -= 1) {
+              const block = this.state.board[row][col];
+              if (block) {
+                survivors.push(block);
+              }
+            }
+
+            let writeRow = CONFIG.ROWS - 1;
+            for (const block of survivors) {
+              this.state.board[writeRow][col] = block;
+              writeRow -= 1;
+            }
+
+            let spawnOffset = 0;
+            while (writeRow >= 0) {
+              this.state.board[writeRow][col] = this.createBlock(randomColor(), -1 - spawnOffset);
+              writeRow -= 1;
+              spawnOffset += 1;
+            }
+          }
+        }
+
+        // Repeatedly clears uniform rows, rewards combo bullets, and refills board.
+        async resolveCascadeChain(shotSession) {
+          let comboIndex = 0;
+
+          while (true) {
+            if (shotSession !== this.sessionId || this.state.isGameOver) {
+              return;
+            }
+            const rows = this.findUniformRows();
+            if (rows.length === 0) {
+              break;
+            }
+
+            comboIndex += 1;
+            const bulletGain = rows.length * CONFIG.BULLET_REWARD_UNIT * comboIndex;
+            const comboScoreBonus = rows.length * Math.max(0, comboIndex - 1) * 25;
+            const scoreGain = rows.length * CONFIG.SCORE_PER_ROW + comboScoreBonus;
+
+            this.state.bullets += bulletGain;
+            this.state.score += scoreGain;
+            this.state.rowsCleared += rows.length;
+            this.state.currentCombo = comboIndex;
+            this.state.bestCombo = Math.max(this.state.bestCombo, comboIndex);
+
+            if (this.state.mode === MODES.TIME) {
+              const timeGain = rows.length * CONFIG.TIME_BONUS_PER_ROW;
+              this.state.timer += timeGain;
+              this.renderer.showFloating(`+${timeGain}s`, 2, 1, "time");
+            }
+
+            this.renderer.showCombo(comboIndex, bulletGain);
+            this.renderer.showFloating(`+${scoreGain} Score`, 2, 2, "score");
+            this.renderer.showFloating(`+${bulletGain} Bullets`, 2, 3, "good");
+
+            this.updateHud();
+            await this.renderer.animateRowClear(this.state.board, rows);
+            if (shotSession !== this.sessionId || this.state.isGameOver) {
+              return;
+            }
+
+            this.clearRows(rows);
+            this.applyGravityAndRefill();
+            await this.renderer.draw(this.state.board);
+            if (shotSession !== this.sessionId || this.state.isGameOver) {
+              return;
+            }
+
+            if (this.state.mode === MODES.TIME && this.state.timer <= 0) {
+              break;
+            }
+          }
+        }
+
+        checkEndConditions() {
+          if (this.state.mode === MODES.PUZZLE) {
+            const level = PUZZLE_LEVELS[this.state.puzzleIndex];
+            if (this.isPuzzleObjectiveMet(level)) {
+              this.onPuzzleSuccess();
+              return;
+            }
+
+            if (this.state.bullets <= 0) {
+              this.showOverlay({
+                title: "Puzzle Failed",
+                text: "Out of bullets before completing the objective.",
+                primaryLabel: "Retry",
+                primaryAction: () => this.resetGame({ keepPuzzleIndex: true }),
+                secondaryLabel: "Classic Mode",
+                secondaryAction: () => this.setMode(MODES.CLASSIC),
+              });
+            }
+            return;
+          }
+
+          if (this.state.mode === MODES.TIME) {
+            if (this.state.timer <= 0) {
+              this.showOverlay({
+                title: "Time Up",
+                text: `Final score: ${this.state.score}`,
+                primaryLabel: "Restart",
+                primaryAction: () => this.restart(),
+              });
+              return;
+            }
+
+            if (this.state.bullets <= 0) {
+              this.showOverlay({
+                title: "Out of Bullets",
+                text: `Final score: ${this.state.score}`,
+                primaryLabel: "Restart",
+                primaryAction: () => this.restart(),
+              });
+            }
+            return;
+          }
+
+          if (this.state.bullets <= 0) {
+            this.showOverlay({
+              title: "Out of Bullets",
+              text: `Final score: ${this.state.score}`,
+              primaryLabel: "Restart",
+              primaryAction: () => this.restart(),
+            });
+          }
+        }
+
+        isPuzzleObjectiveMet(level) {
+          if (level.objective.type === "rows") {
+            return this.state.rowsCleared >= level.objective.target;
+          }
+          if (level.objective.type === "score") {
+            return this.state.score >= level.objective.target;
+          }
+          return false;
+        }
+
+        onPuzzleSuccess() {
+          const isLast = this.state.puzzleIndex === PUZZLE_LEVELS.length - 1;
+
+          if (isLast) {
+            this.showOverlay({
+              title: "All Puzzles Cleared",
+              text: `Great run. Total score: ${this.state.score}`,
+              primaryLabel: "Replay Puzzles",
+              primaryAction: () => {
+                this.state.puzzleIndex = 0;
+                this.resetGame({ keepPuzzleIndex: true });
+              },
+              secondaryLabel: "Retry Last",
+              secondaryAction: () => this.resetGame({ keepPuzzleIndex: true }),
+            });
+            return;
+          }
+
+          this.showOverlay({
+            title: `${PUZZLE_LEVELS[this.state.puzzleIndex].name} Complete`,
+            text: `Bullets left: ${this.state.bullets}`,
+            primaryLabel: "Next Puzzle",
+            primaryAction: () => {
+              this.state.puzzleIndex += 1;
+              this.resetGame({ keepPuzzleIndex: true });
+            },
+            secondaryLabel: "Retry",
+            secondaryAction: () => this.resetGame({ keepPuzzleIndex: true }),
+          });
+        }
+
+        showOverlay(config) {
+          this.state.isGameOver = true;
+          this.state.isBusy = false;
+
+          this.dom.overlayTitle.textContent = config.title;
+          this.dom.overlayText.textContent = config.text;
+
+          this.dom.overlayPrimary.textContent = config.primaryLabel || "Restart";
+          this.overlayActions.primary =
+            typeof config.primaryAction === "function" ? config.primaryAction : () => this.restart();
+
+          if (config.secondaryLabel && typeof config.secondaryAction === "function") {
+            this.dom.overlaySecondary.textContent = config.secondaryLabel;
+            this.dom.overlaySecondary.classList.remove("hidden");
+            this.overlayActions.secondary = config.secondaryAction;
+          } else {
+            this.dom.overlaySecondary.classList.add("hidden");
+            this.overlayActions.secondary = null;
+          }
+
+          this.dom.gameOverlay.classList.remove("hidden");
+          this.refreshHighlight();
+          this.updateHud();
+        }
+
+        hideOverlay() {
+          this.dom.gameOverlay.classList.add("hidden");
+          this.overlayActions.primary = null;
+          this.overlayActions.secondary = null;
+        }
+
+        refreshHighlight() {
+          const column = this.state.hoverColumn ?? this.state.selectedColumn;
+          this.renderer.setHighlight(column, this.canShoot());
+        }
+
+        formatTimer(seconds) {
+          const total = Math.max(0, Math.ceil(seconds));
+          const mins = Math.floor(total / 60);
+          const secs = total % 60;
+          return `${mins}:${String(secs).padStart(2, "0")}`;
+        }
+
+        updateHud() {
+          this.dom.scoreValue.textContent = String(this.state.score);
+          this.dom.bulletsValue.textContent = String(this.state.bullets);
+          this.dom.comboValue.textContent = `x${this.state.currentCombo}`;
+          this.dom.bestComboValue.textContent = `x${this.state.bestCombo}`;
+
+          const isTimeMode = this.state.mode === MODES.TIME;
+          this.dom.timerCard.style.display = isTimeMode ? "flex" : "none";
+          this.dom.timerValue.textContent = this.formatTimer(this.state.timer);
+
+          const isPuzzleMode = this.state.mode === MODES.PUZZLE;
+          this.dom.puzzleInfo.classList.toggle("hidden", !isPuzzleMode);
+
+          if (isPuzzleMode) {
+            const level = PUZZLE_LEVELS[this.state.puzzleIndex];
+            this.dom.puzzleLabel.textContent = level.name;
+            this.dom.objectiveText.textContent = level.objective.label;
+
+            if (level.objective.type === "rows") {
+              this.dom.progressText.textContent = `Rows cleared: ${this.state.rowsCleared}/${level.objective.target}`;
+            } else {
+              this.dom.progressText.textContent = `Score: ${this.state.score}/${level.objective.target}`;
+            }
+
+            this.dom.instructionText.textContent =
+              "Shoot carefully. Puzzle boards are fixed starts, but refill after clears is random.";
+          } else if (isTimeMode) {
+            this.dom.instructionText.textContent =
+              "60-second sprint. Every cleared row adds +2s and bullets for chain survival.";
+          } else {
+            this.dom.instructionText.textContent =
+              "Click or tap a column to shoot its bottom block. Keyboard: 1-5 to shoot, arrows to select, Space/Enter to fire.";
+          }
+        }
+      }
+
+      new BlockShotGame();
+    })();
+  </script>
+</body>
+</html>
+
